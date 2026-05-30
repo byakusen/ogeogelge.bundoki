@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>分度器（ぶんどき）で 角（かく）を よもう</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yusei+Magic&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#fbf3e2;
+    --paper2:#fff;
+    --ink:#34465f;
+    --ink-soft:#6a7d96;
+    --teal:#1fae9c;
+    --teal-d:#138577;
+    --coral:#ff7a59;
+    --coral-d:#e85d3b;
+    --gold:#ffc94d;
+    --line:#d8ccae;
+    --ok:#2bb673;
+    --ng:#ef6b6b;
+    --grid:rgba(120,140,170,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+    color:var(--ink);
+    background:
+      linear-gradient(var(--grid) 1px,transparent 1px) 0 0/26px 26px,
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/26px 26px,
+      var(--paper);
+    min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;
+    padding:14px 12px 28px;
+  }
+  .wrap{width:100%;max-width:680px;}
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:10px;margin-bottom:10px;
+  }
+  h1{
+    font-family:"Yusei Magic",sans-serif;
+    font-size:clamp(20px,5.4vw,30px);
+    margin:0;color:var(--teal-d);letter-spacing:.5px;
+    text-shadow:2px 2px 0 #fff;
+  }
+  h1 .pin{color:var(--coral-d);}
+  .score{
+    background:var(--gold);
+    border:3px solid #fff;
+    box-shadow:0 4px 0 #d9a629;
+    border-radius:16px;
+    padding:6px 14px;
+    font-weight:900;font-size:clamp(14px,3.6vw,18px);
+    color:#7a5a10;white-space:nowrap;
+  }
+  /* steps */
+  .steps{display:flex;gap:8px;margin-bottom:10px;}
+  .step{
+    flex:1;display:flex;align-items:center;gap:8px;justify-content:center;
+    background:#fff;border:3px solid var(--line);border-radius:14px;
+    padding:8px 6px;font-weight:700;font-size:clamp(11px,3vw,14px);
+    color:var(--ink-soft);transition:.25s;
+  }
+  .step .num{
+    width:26px;height:26px;border-radius:50%;background:var(--line);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;flex:0 0 auto;
+  }
+  .step.active{border-color:var(--teal);color:var(--teal-d);background:#eafbf8;box-shadow:0 4px 0 #bfeee7;}
+  .step.active .num{background:var(--teal);}
+  .step.done .num{background:var(--ok);}
+  .step.done{border-color:#bfe8d2;color:var(--ok);}
+
+  .stage{
+    position:relative;background:var(--paper2);
+    border:4px dashed var(--line);border-radius:22px;
+    box-shadow:0 8px 0 rgba(0,0,0,.05),0 14px 30px rgba(80,90,120,.10);
+    padding:8px;overflow:hidden;
+  }
+  canvas{display:block;width:100%;height:auto;touch-action:none;border-radius:14px;cursor:grab;}
+  canvas:active{cursor:grabbing;}
+  .hanamaru{
+    position:absolute;left:50%;top:60%;
+    width:48%;max-width:300px;pointer-events:none;
+    transform:translate(-50%,-50%) scale(0);opacity:0;
+    filter:drop-shadow(0 8px 16px rgba(0,0,0,.22));
+    z-index:5;
+  }
+  .hanamaru.show{animation:hanamaru-pop .6s cubic-bezier(.2,1.3,.4,1) forwards;}
+  @keyframes hanamaru-pop{
+    0%{transform:translate(-50%,-50%) scale(0) rotate(-28deg);opacity:0;}
+    60%{transform:translate(-50%,-50%) scale(1.15) rotate(7deg);opacity:1;}
+    100%{transform:translate(-50%,-50%) scale(1) rotate(0);opacity:1;}
+  }
+
+  .guide{
+    margin:12px 0 6px;background:#fff;border:3px solid var(--teal);
+    border-radius:16px;padding:10px 14px;font-weight:700;
+    color:var(--ink);font-size:clamp(14px,3.8vw,18px);line-height:1.5;
+    box-shadow:0 5px 0 #cdeee9;display:flex;gap:10px;align-items:center;
+  }
+  .guide .ic{font-size:24px;flex:0 0 auto;}
+  ruby rt{font-size:.55em;color:var(--ink-soft);font-weight:700;}
+
+  .answer{
+    display:flex;gap:10px;align-items:stretch;margin-top:12px;flex-wrap:wrap;
+  }
+  .answer .field{
+    flex:1 1 150px;display:flex;align-items:center;gap:8px;
+    background:#fff;border:3px solid var(--coral);border-radius:16px;padding:6px 10px 6px 14px;
+    box-shadow:0 5px 0 #f5c4b5;
+  }
+  .answer label{font-weight:900;font-size:clamp(15px,4vw,19px);white-space:nowrap;color:var(--coral-d);}
+  #ans{
+    flex:1;min-width:60px;border:none;outline:none;background:transparent;
+    font-family:"Yusei Magic",sans-serif;font-size:clamp(26px,7vw,36px);
+    color:var(--ink);text-align:center;width:100%;
+  }
+  .unit{font-weight:900;font-size:clamp(18px,5vw,26px);color:var(--ink-soft);}
+
+  .numpad{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+    margin-top:12px;background:#e7f5fd;border:3px solid #cbe7f7;
+    border-radius:18px;padding:12px;
+    box-shadow:inset 0 2px 8px rgba(120,170,200,.18);
+  }
+  .key{
+    font-family:"Yusei Magic",sans-serif;font-size:clamp(24px,7vw,34px);
+    color:#1f9bd6;background:#fff;border:none;border-radius:14px;
+    min-height:clamp(48px,12vw,70px);box-shadow:0 4px 0 #cfe7f4;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .key:active{transform:translateY(3px);box-shadow:0 1px 0 #cfe7f4;}
+  .key.del{color:#7fb0d0;background:#f1f8fd;font-size:clamp(22px,6vw,30px);}
+  .key.ok{color:#fff;background:linear-gradient(#42b2ee,#1f8fd6);
+    box-shadow:0 4px 0 #1773b0;font-size:clamp(22px,6vw,30px);}
+  .key.ok:active{box-shadow:0 1px 0 #1773b0;}
+
+  button{
+    font-family:"Zen Maru Gothic",sans-serif;font-weight:900;cursor:pointer;
+    border:none;border-radius:16px;color:#fff;transition:transform .05s,box-shadow .05s;
+  }
+  button:active{transform:translateY(3px);}
+  .btn-go{
+    background:var(--coral);box-shadow:0 5px 0 var(--coral-d);
+    font-size:clamp(18px,5vw,24px);padding:0 22px;flex:0 0 auto;
+  }
+  .btn-go:active{box-shadow:0 2px 0 var(--coral-d);}
+  .row2{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .btn-next{flex:1;background:var(--teal);box-shadow:0 5px 0 var(--teal-d);font-size:clamp(15px,4.2vw,20px);padding:14px;}
+  .btn-next:active{box-shadow:0 2px 0 var(--teal-d);}
+  .btn-redo{flex:0 0 auto;background:#9aa7bb;box-shadow:0 5px 0 #76839a;font-size:clamp(14px,4vw,18px);padding:14px 18px;}
+  .btn-redo:active{box-shadow:0 2px 0 #76839a;}
+  .btn-cfg{flex:0 0 auto;background:#fff;color:var(--ink-soft);border:3px solid var(--line);
+    box-shadow:0 5px 0 #e4dac1;font-size:18px;padding:11px 16px;}
+  .btn-cfg:active{box-shadow:0 2px 0 #e4dac1;}
+
+  .result{
+    margin-top:14px;text-align:center;font-family:"Yusei Magic",sans-serif;
+    font-size:clamp(22px,6.5vw,34px);min-height:1.2em;transition:.2s;
+  }
+  .result.ok{color:var(--ok);}
+  .result.ng{color:var(--ng);}
+
+  /* config panel */
+  .cfg{
+    margin-top:12px;background:#fff;border:3px solid var(--line);border-radius:16px;
+    padding:14px 16px;display:none;
+  }
+  .cfg.open{display:block;}
+  .cfg h3{margin:0 0 6px;font-size:15px;color:var(--ink-soft);}
+  .cfg p{margin:0 0 12px;font-size:12px;color:var(--ink-soft);line-height:1.5;}
+  .cfg .ctl{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:13px;font-weight:700;}
+  .cfg .ctl label{flex:0 0 110px;}
+  .cfg input[type=range]{flex:1;accent-color:var(--teal);}
+  .cfg .val{flex:0 0 52px;text-align:right;color:var(--teal-d);font-weight:900;}
+  .cfg .checks{display:flex;gap:18px;flex-wrap:wrap;margin-top:6px;font-size:13px;font-weight:700;}
+  .cfg .checks label{display:flex;align-items:center;gap:6px;cursor:pointer;}
+  .footnote{text-align:center;color:var(--ink-soft);font-size:11px;margin-top:14px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="pin">分度器</span>で 角を よもう</h1>
+    <div class="score" id="score">せいかい 0</div>
+  </header>
+
+  <div class="steps">
+    <div class="step active" id="st1"><span class="num">1</span><span>中心を 合わせる</span></div>
+    <div class="step" id="st2"><span class="num">2</span><span>下の辺に 合わせる</span></div>
+    <div class="step" id="st3"><span class="num">3</span><span>めもりを 読む</span></div>
+  </div>
+
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <img id="hanamaru" alt="はなまる" class="hanamaru">
+  </div>
+
+  <div class="guide"><span class="ic" id="gic">🖐️</span><span id="guide"></span></div>
+
+  <div class="answer">
+    <div class="field">
+      <label>こたえ</label>
+      <input id="ans" type="number" inputmode="numeric" placeholder="?" min="0" max="180">
+      <span class="unit">°</span>
+    </div>
+  </div>
+
+  <div class="numpad" id="numpad">
+    <button class="key" data-d="1">1</button>
+    <button class="key" data-d="2">2</button>
+    <button class="key" data-d="3">3</button>
+    <button class="key" data-d="4">4</button>
+    <button class="key" data-d="5">5</button>
+    <button class="key" data-d="6">6</button>
+    <button class="key" data-d="7">7</button>
+    <button class="key" data-d="8">8</button>
+    <button class="key" data-d="9">9</button>
+    <button class="key del" id="npdel" aria-label="けす">⌫</button>
+    <button class="key" data-d="0">0</button>
+    <button class="key ok" id="npok">OK</button>
+  </div>
+
+  <div class="result" id="result"></div>
+
+  <div class="row2">
+    <button class="btn-next" id="next">▶ つぎの もんだい</button>
+    <button class="btn-redo" id="redo">やりなおす</button>
+    <button class="btn-cfg" id="cfgbtn" title="分度器の ちょうせい">🔧</button>
+  </div>
+
+  <div class="cfg" id="cfg">
+    <h3>🔧 分度器（がぞう）の ちょうせい</h3>
+    <p>がぞうの 中心（ちゅうしん）が 線の こうてんに、そこ（0°の へん）が 下の よこ線に ぴったり 合うように 調整してください。「ガイドを 表示」を ONに すると 合わせやすいです。</p>
+    <div class="ctl"><label>中心 よこ</label><input type="range" id="cx" min="0" max="100" value="50"><span class="val" id="cxv">50%</span></div>
+    <div class="ctl"><label>中心 たて</label><input type="range" id="cy" min="60" max="100" value="93"><span class="val" id="cyv">93%</span></div>
+    <div class="ctl"><label>大きさ</label><input type="range" id="rr" min="35" max="60" value="50"><span class="val" id="rrv">50%</span></div>
+    <div class="checks">
+      <label><input type="checkbox" id="flip"> 上下を ひっくりかえす</label>
+      <label><input type="checkbox" id="guideov"> ガイドを 表示</label>
+      <label><input type="checkbox" id="useimg" checked> がぞうを つかう</label>
+    </div>
+  </div>
+
+  <div class="footnote">
+    タブレット・タッチ操作 対応 ／ 角度は 20°〜160°（5°きざみ）<br>
+    分度器の画像が ずれる ときは 🔧ボタンで 調整できます。
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ======================= 設定 ======================= */
+const PROTRACTOR_IMAGE_URL = 'https://github.com/byakusen/ogeogelge.bundoki/blob/main/bundoki.png?raw=true';
+const FALLBACK_IMAGE_URL  = 'https://raw.githubusercontent.com/byakusen/ogeogelge.bundoki/main/bundoki.png';
+const SOUND_OK_URL = 'https://github.com/byakusen/ogeogelge.bundoki/raw/refs/heads/main/pinpon.mp3';
+const HANAMARU_URL = 'https://github.com/byakusen/hanamaru/blob/main/hanamaru2.png?raw=true';
+
+let imgCfg = {
+  cx: 0.50,   // 画像内の中心X（0〜1）
+  cy: 0.93,   // 画像内の中心Y（0〜1）= 底辺の位置
+  rr: 0.50,   // 半円の半径 ÷ 画像のはば
+  rotOffsetDeg: 0.2, // 画像の傾き補正（＋で時計回り）
+  flipV: false,
+  guide: false,
+  useImage: true
+};
+
+const SNAP_POS = 30;   // 位置スナップ(px)
+const SNAP_ROT = 5;    // 角度スナップ(度)
+const TOL      = 2;    // 正解の許容(度)
+// 「0」を囲む赤丸の設定（半径Rに対する割合）。right=黒い辺が右の問題 / left=左の問題
+// r=中心からの距離, yLift=上へ, rx/ry=丸の大きさ
+const HINT = {
+  right: { r:0.58, yLift:0.00, rx:0.08, ry:0.08 },
+  left:  { r:0.72, yLift:-0.03, rx:0.10, ry:0.10 }
+};
+
+/* ======================= 状態 ======================= */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W=0,H=0,DPR=1;
+let P={x:0,y:0}, R=120, rayLen=150;
+let target=60;                 // 答えの角度
+let rayADir=0, rayBDir=60;     // 黒い線・オレンジ線の 向き(度)
+let prot={ x:0,y:0, rot:30, placed:false, snapped:false };
+let drag=null;                 // {mode:'move'|'rot', offX,offY, offRot}
+let placeFlash=0, snapFlash=0;
+let img=null, imgReady=false, imgFailed=false;
+let answered=false;
+
+/* ======================= 画像 ======================= */
+function loadImage(){
+  img = new Image();
+  img.onload = ()=>{ imgReady=true; };
+  img.onerror = ()=>{
+    // 1回目失敗 → raw.githubusercontent を試す
+    if(img.src.indexOf('raw.githubusercontent')<0){
+      img.src = FALLBACK_IMAGE_URL;
+    } else {
+      imgFailed=true; imgReady=false;   // 手描き分度器にフォールバック
+    }
+  };
+  img.src = PROTRACTOR_IMAGE_URL;
+}
+loadImage();
+
+/* ===== 正解の音・はなまる ===== */
+const okSound = new Audio(SOUND_OK_URL);
+okSound.preload = 'auto';
+document.getElementById('hanamaru').src = HANAMARU_URL;
+document.getElementById('hanamaru').onerror = function(){ this.style.display='none'; };
+function playOk(){ try{ okSound.currentTime=0; const p=okSound.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
+function showHanamaru(){ const h=document.getElementById('hanamaru'); h.classList.remove('show'); void h.offsetWidth; h.classList.add('show'); }
+function hideHanamaru(){ document.getElementById('hanamaru').classList.remove('show'); }
+
+/* ======================= 角度ユーティリティ ======================= */
+const D2R = Math.PI/180;
+function angDiff(a,b){ let d=((a-b)%360+540)%360-180; return d; }
+function ptAngle(px,py){ // Pを中心とした数学角(度,CCW)
+  return Math.atan2(P.y-py, px-P.x)/D2R;
+}
+
+/* ======================= サイズ ======================= */
+function resize(){
+  const cssW = cv.parentElement.clientWidth - 16;
+  const cssW2 = Math.max(280, cssW);
+  const cssH = Math.round(cssW2 * 0.68);
+  DPR = Math.min(window.devicePixelRatio||1, 2.5);
+  cv.style.width = cssW2+'px';
+  cv.style.height = cssH+'px';
+  cv.width = Math.round(cssW2*DPR);
+  cv.height = Math.round(cssH*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  W=cssW2; H=cssH;
+  P.x = W*0.5; P.y = H*0.66;
+  R = Math.min(W*0.40, H*0.58);
+  rayLen = R*1.12;
+}
+
+/* ======================= もんだい生成 ======================= */
+function newProblem(){
+  const list=[];
+  for(let a=20;a<=160;a+=5) list.push(a);
+  target = list[Math.floor(Math.random()*list.length)];
+  // 黒い線を 右 or 左 に（ランダム）。角の大きさは どちらでも target
+  const leftSide = Math.random()<0.5;
+  rayADir = leftSide ? 180 : 0;
+  rayBDir = leftSide ? (180 - target) : target;
+  // 分度器を 端っこ・かたむけて 置く
+  const side = Math.random()<0.5?-1:1;
+  prot.x = P.x + side*(W*0.28);
+  prot.y = P.y + H*0.22;
+  prot.rot = (Math.random()<0.5?1:-1)*(20+Math.random()*18); // ±(20〜38)°
+  prot.placed=false; prot.snapped=false;
+  answered=false;
+  document.getElementById('ans').value='';
+  document.getElementById('result').textContent='';
+  document.getElementById('result').className='result';
+  hideHanamaru();
+  updateSteps();
+  updateGuide();
+}
+
+/* ======================= 描画 ======================= */
+function clear(){ ctx.clearRect(0,0,W,H); }
+
+function rayPoint(angDeg,len){
+  return { x:P.x+Math.cos(angDeg*D2R)*len, y:P.y-Math.sin(angDeg*D2R)*len };
+}
+
+function drawRays(top){
+  const a = rayPoint(rayADir, rayLen);
+  const b = rayPoint(rayBDir, rayLen);
+  ctx.lineCap='round';
+  // 黒い横線(rayA) = ネイビー
+  ctx.globalAlpha = top?0.5:1;
+  ctx.strokeStyle = top? 'rgba(52,70,95,.6)' : '#34465f';
+  ctx.lineWidth = top?3:6;
+  ctx.beginPath(); ctx.moveTo(P.x,P.y); ctx.lineTo(a.x,a.y); ctx.stroke();
+  // よむ線(rayB) = コーラル
+  ctx.strokeStyle = top? 'rgba(255,90,55,.65)' : '#ff7a59';
+  ctx.beginPath(); ctx.moveTo(P.x,P.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  ctx.globalAlpha=1;
+
+  if(!top){
+    const sweep = angDiff(rayBDir, rayADir); // 符号つき最短角(±target)
+    // 角を示す小さな弧
+    ctx.strokeStyle='rgba(255,122,89,.85)'; ctx.lineWidth=3;
+    ctx.beginPath();
+    const steps=26;
+    for(let i=0;i<=steps;i++){
+      const d=(rayADir + sweep*(i/steps))*D2R;
+      const x=P.x+Math.cos(d)*30, y=P.y-Math.sin(d)*30;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    // 「？」
+    const mid = rayPoint(rayADir + sweep/2, 48);
+    ctx.fillStyle='#e85d3b'; ctx.font='900 22px "Yusei Magic",sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('?', mid.x, mid.y);
+    // 「この線」ラベル
+    const lab = rayPoint(rayBDir, R+24);
+    ctx.fillStyle='#e85d3b'; ctx.font='700 12px "Zen Maru Gothic",sans-serif';
+    ctx.fillText('この線', lab.x, lab.y-10);
+  }
+}
+
+function drawProtractorImage(px,py,rotDeg){
+  const dispW = R / imgCfg.rr;
+  const scale = dispW / img.naturalWidth;
+  const dispH = img.naturalHeight * scale;
+  const pvx = imgCfg.cx * dispW;
+  const pvy = imgCfg.cy * dispH;
+  ctx.save();
+  ctx.translate(px,py);
+  ctx.rotate(-rotDeg*D2R + imgCfg.rotOffsetDeg*D2R);
+  if(imgCfg.flipV) ctx.scale(1,-1);
+  ctx.globalAlpha = 0.92;
+  ctx.drawImage(img, -pvx, -pvy, dispW, dispH);
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
+
+function drawProtractorDrawn(px,py,rotDeg){
+  ctx.save();
+  ctx.translate(px,py);
+  ctx.rotate(-rotDeg*D2R);
+  // 半円の面
+  ctx.beginPath();
+  ctx.moveTo(-R,0); ctx.lineTo(R,0);
+  ctx.arc(0,0,R,0,-Math.PI,true);
+  ctx.closePath();
+  ctx.fillStyle='rgba(95,200,235,.28)';
+  ctx.strokeStyle='#2196c4'; ctx.lineWidth=2.5;
+  ctx.fill(); ctx.stroke();
+  // 目もり
+  for(let a=0;a<=180;a++){
+    const rad=a*D2R;
+    let len = (a%10===0)?14 : (a%5===0)?9 : 5;
+    const x1=Math.cos(rad)*R, y1=-Math.sin(rad)*R;
+    const x2=Math.cos(rad)*(R-len), y2=-Math.sin(rad)*(R-len);
+    ctx.strokeStyle = (a%10===0)?'#0d6e92':'#3aa6cc';
+    ctx.lineWidth = (a%10===0)?1.6:1;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+  // 数字（外＝0→180 / 内＝180→0）
+  ctx.fillStyle='#0d6e92'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(let a=0;a<=180;a+=10){
+    const rad=a*D2R;
+    const ro=R-26, ri=R-44;
+    ctx.font='700 12px "Zen Maru Gothic",sans-serif';
+    ctx.fillStyle='#0d6e92';
+    ctx.fillText(String(a), Math.cos(rad)*ro, -Math.sin(rad)*ro);
+    ctx.font='700 10px "Zen Maru Gothic",sans-serif';
+    ctx.fillStyle='#7ab9d2';
+    ctx.fillText(String(180-a), Math.cos(rad)*ri, -Math.sin(rad)*ri);
+  }
+  // 中心
+  ctx.fillStyle='#e85d3b';
+  ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawGuideOverlay(px,py,rotDeg){
+  ctx.save();
+  ctx.translate(px,py);
+  ctx.rotate(-rotDeg*D2R);
+  ctx.strokeStyle='rgba(232,93,59,.9)'; ctx.lineWidth=1.5;
+  // 中心十字
+  ctx.beginPath(); ctx.moveTo(-12,0); ctx.lineTo(12,0); ctx.moveTo(0,-12); ctx.lineTo(0,12); ctx.stroke();
+  // 底辺の基準線
+  ctx.setLineDash([6,5]);
+  ctx.beginPath(); ctx.moveTo(-R,0); ctx.lineTo(R,0); ctx.stroke();
+  // 半径の円
+  ctx.beginPath(); ctx.arc(0,0,R,0,-Math.PI,true); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawLoadingPlaceholder(px,py,rotDeg){
+  ctx.save();
+  ctx.translate(px,py);
+  ctx.rotate(-rotDeg*D2R);
+  ctx.fillStyle='rgba(150,165,190,.10)';
+  ctx.strokeStyle='rgba(120,140,170,.45)';
+  ctx.lineWidth=2; ctx.setLineDash([7,6]);
+  ctx.beginPath();
+  ctx.moveTo(-R,0); ctx.lineTo(R,0);
+  ctx.arc(0,0,R,0,-Math.PI,true);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(106,125,150,.7)';
+  ctx.font='700 13px "Zen Maru Gothic",sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('よみこみちゅう…', 0, -R*0.45);
+  ctx.fillStyle='#9aa7bb';
+  ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawProtractor(){
+  const px = prot.placed?P.x:prot.x;
+  const py = prot.placed?P.y:prot.y;
+  if(imgCfg.useImage && !imgFailed){
+    if(imgReady){
+      drawProtractorImage(px,py,prot.rot);
+    } else {
+      drawLoadingPlaceholder(px,py,prot.rot);   // 読み込み中は手描きを出さない
+    }
+  } else {
+    drawProtractorDrawn(px,py,prot.rot);
+  }
+  if(imgCfg.guide) drawGuideOverlay(px,py,prot.rot);
+}
+
+function drawVertex(){
+  // スナップ演出
+  if(placeFlash>0){
+    ctx.strokeStyle='rgba(43,182,115,'+placeFlash+')';
+    ctx.lineWidth=4;
+    ctx.beginPath(); ctx.arc(P.x,P.y, 22*(1.4-placeFlash)+10, 0, Math.PI*2); ctx.stroke();
+  }
+  ctx.fillStyle = prot.placed? '#2bb673' : '#34465f';
+  ctx.beginPath(); ctx.arc(P.x,P.y, prot.placed?7:6, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+  if(snapFlash>0 && prot.snapped){
+    ctx.fillStyle='rgba(43,182,115,'+snapFlash+')';
+    ctx.font='900 30px "Yusei Magic",sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('✓', P.x, P.y- R - 12);
+  }
+}
+
+function drawZeroHint(){
+  // 辺(黒い線)がある側の「0」を 赤丸で囲む
+  const useRight = (rayADir === 0);
+  const h = useRight ? HINT.right : HINT.left;
+  const ang = (useRight ? 0 : 180) * D2R;
+  const rr  = h.r * R;
+  const hx = P.x + Math.cos(ang)*rr;
+  const hy = P.y - Math.sin(ang)*rr - R*h.yLift;
+  const pulse = 1 + 0.08*Math.sin(Date.now()/250);
+  ctx.save();
+  ctx.translate(hx,hy);
+  ctx.strokeStyle = '#ff3b30';
+  ctx.lineWidth = 3.5; ctx.lineJoin='round';
+  ctx.beginPath();
+  ctx.ellipse(0,0, R*h.rx*pulse, R*h.ry*pulse, 0, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function render(){
+  clear();
+  drawRays(false);     // 下の線
+  drawProtractor();    // 分度器
+  drawRays(true);      // 上に薄く重ねる(目もりが見えるように)
+  if(prot.snapped) drawZeroHint();   // ③のとき 辺がある側の0を赤丸
+  drawVertex();
+  if(placeFlash>0) placeFlash-=0.03;
+  if(snapFlash>0)  snapFlash-=0.02;
+  requestAnimationFrame(render);
+}
+
+/* ======================= 操作（ポインタ＝マウス＋タッチ） ======================= */
+function localPt(e){
+  const r=cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left), y:(e.clientY-r.top) };
+}
+function dist(ax,ay,bx,by){ return Math.hypot(ax-bx,ay-by); }
+
+cv.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  cv.setPointerCapture(e.pointerId);
+  const p=localPt(e);
+  if(!prot.placed){
+    drag={ mode:'move', offX:prot.x-p.x, offY:prot.y-p.y };
+  } else if(!prot.snapped){
+    const pa = ptAngle(p.x,p.y);
+    drag={ mode:'rot', offRot: prot.rot - pa };
+  } else {
+    drag=null; // スナップ済みは固定（やりなおすで解除）
+  }
+});
+
+cv.addEventListener('pointermove', e=>{
+  if(!drag) return;
+  e.preventDefault();
+  const p=localPt(e);
+  if(drag.mode==='move'){
+    prot.x = p.x + drag.offX;
+    prot.y = p.y + drag.offY;
+    if(dist(prot.x,prot.y,P.x,P.y) <= SNAP_POS){
+      prot.placed=true; placeFlash=1.0;
+      drag=null;
+      updateSteps(); updateGuide();
+    }
+  } else if(drag.mode==='rot'){
+    const pa = ptAngle(p.x,p.y);
+    prot.rot = pa + drag.offRot;
+    // 底辺(0°)を 下の横線(0°) に合わせる
+    if(Math.abs(angDiff(prot.rot,0)) <= SNAP_ROT){
+      prot.rot=0; prot.snapped=true; snapFlash=1.0;
+      drag=null;
+      updateSteps(); updateGuide();
+    }
+  }
+});
+
+function endDrag(e){ if(drag && drag.mode!=='rot'){} drag=null; }
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+/* ======================= ガイド・ステップ表示 ======================= */
+function updateSteps(){
+  const s1=document.getElementById('st1'), s2=document.getElementById('st2'), s3=document.getElementById('st3');
+  s1.className='step'; s2.className='step'; s3.className='step';
+  if(!prot.placed){ s1.className='step active'; }
+  else if(!prot.snapped){ s1.className='step done'; s2.className='step active'; }
+  else { s1.className='step done'; s2.className='step done'; s3.className='step active'; }
+}
+function updateGuide(){
+  const g=document.getElementById('guide'), ic=document.getElementById('gic');
+  if(!prot.placed){
+    ic.textContent='🖐️';
+    g.innerHTML='分度器を ドラッグして、2本の線が 交わる<b> 点（てん）</b>に 中心を あわせよう。';
+  } else if(!prot.snapped){
+    ic.textContent='🔄';
+    g.innerHTML='分度器を <b>まわして</b>、そこ（0°のへん）を <b>下の よこ線</b>に ぴったり あわせよう。半円が <b>上</b>を むくようにね。';
+  } else {
+    ic.textContent='👀';
+    g.innerHTML='オレンジの線が さしている <b>目もり</b>を 読んで、こたえを 入力して「けってい」を おそう！';
+  }
+}
+
+/* ======================= こたえ判定 ======================= */
+const ansEl = document.getElementById('ans');
+function checkAnswer(){
+  const v = parseInt(ansEl.value,10);
+  const res=document.getElementById('result');
+  hideHanamaru();
+  if(isNaN(v)){ res.textContent='すうじを 入力してね'; res.className='result ng'; return; }
+  if(Math.abs(v-target) <= TOL){
+    res.textContent='せいかい！ 🎉'; res.className='result ok';
+    playOk(); showHanamaru();
+    if(!answered){ score++; document.getElementById('score').textContent='せいかい '+score; answered=true; }
+  } else {
+    res.textContent='ざんねん… もう一度 見てみよう 🔍'; res.className='result ng';
+  }
+}
+ansEl.addEventListener('keydown', e=>{ if(e.key==='Enter') checkAnswer(); });
+
+// 画面の テンキー
+document.getElementById('numpad').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  if(btn.id==='npok'){ checkAnswer(); return; }
+  if(btn.id==='npdel'){ ansEl.value = ansEl.value.slice(0,-1); return; }
+  const d = btn.getAttribute('data-d'); if(d===null) return;
+  let val = ansEl.value;
+  if(val==='0') val='';
+  if(val.length>=3) return;
+  ansEl.value = val + d;
+});
+
+let score=0;
+document.getElementById('next').addEventListener('click', newProblem);
+document.getElementById('redo').addEventListener('click', ()=>{
+  // 分度器だけ もう一度（同じもんだい）
+  const side=Math.random()<0.5?-1:1;
+  prot.x=P.x+side*(W*0.28); prot.y=P.y+H*0.22;
+  prot.rot=(Math.random()<0.5?1:-1)*(20+Math.random()*18);
+  prot.placed=false; prot.snapped=false; answered=false;
+  document.getElementById('result').textContent='';
+  document.getElementById('result').className='result';
+  hideHanamaru();
+  updateSteps(); updateGuide();
+});
+
+/* ======================= 調整パネル ======================= */
+const cfgPanel=document.getElementById('cfg');
+document.getElementById('cfgbtn').addEventListener('click', ()=> cfgPanel.classList.toggle('open'));
+function bindRange(id,key,fmt,scale){
+  const el=document.getElementById(id), out=document.getElementById(id+'v');
+  el.addEventListener('input', ()=>{
+    const v=parseInt(el.value,10);
+    imgCfg[key]= scale? v/100 : v;
+    out.textContent=fmt(v);
+  });
+}
+bindRange('cx','cx',v=>v+'%',true);
+bindRange('cy','cy',v=>v+'%',true);
+bindRange('rr','rr',v=>v+'%',true);
+document.getElementById('flip').addEventListener('change',e=>imgCfg.flipV=e.target.checked);
+document.getElementById('guideov').addEventListener('change',e=>imgCfg.guide=e.target.checked);
+document.getElementById('useimg').addEventListener('change',e=>imgCfg.useImage=e.target.checked);
+
+/* ======================= 起動 ======================= */
+window.addEventListener('resize', ()=>{ resize(); });
+resize();
+newProblem();
+render();
+</script>
+</body>
+</html>
